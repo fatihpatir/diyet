@@ -1,0 +1,17 @@
+{
+    "name": "Diyet & Detoks Asistanım",
+    "short_name": "Diyetim",
+    "description": "Kişisel diyet ve su takip asistanınız",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#fdfbf7",
+    "theme_color": "#b8d8be",
+    "icons": [
+        {
+            "src": "icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diyet & Detoks Takibi</title>
+    <meta name="description" content="Kişisel diyet ve su takip asistanınız">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#b8d8be">
+    <link rel="apple-touch-icon" href="icon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="theme-default">
+    <div id="app">
+        <header>
+            <div class="header-content">
+                <div class="header-top">
+                    <h1>Diyet Asistanım</h1>
+                    <div class="header-actions">
+                        <button id="theme-toggle-btn" class="action-btn"><i class="ph ph-palette"></i></button>
+                        <button id="info-btn" class="action-btn"><i class="ph ph-info"></i></button>
+                    </div>
+                </div>
+                <p id="current-date"></p>
+            </div>
+            
+            <div id="theme-menu" class="theme-menu hidden">
+                <button class="theme-opt" onclick="window.setTheme('theme-default')" style="background:#b8d8be"></button>
+                <button class="theme-opt" onclick="window.setTheme('theme-rose')" style="background:#f4b0b0"></button>
+                <button class="theme-opt" onclick="window.setTheme('theme-ocean')" style="background:#b0d4f4"></button>
+                <button class="theme-opt" onclick="window.setTheme('theme-lavender')" style="background:#d4b0f4"></button>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <!-- Content will be injected by JS -->
+        </main>
+
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="dashboard" id="nav-dashboard">
+                <i class="ph ph-house"></i>
+                <span>Ana Sayfa</span>
+            </button>
+            <button class="nav-item" data-tab="diet" id="nav-diet">
+                <i class="ph ph-fork-knife"></i>
+                <span>Diyet Listem</span>
+            </button>
+            <button class="nav-item" data-tab="stats" id="nav-stats">
+                <i class="ph ph-chart-line"></i>
+                <span>Takip</span>
+            </button>
+            <button class="nav-item" data-tab="profile" id="nav-profile">
+                <i class="ph ph-user"></i>
+                <span>Profil</span>
+            </button>
+        </nav>
+
+        <footer class="app-footer">
+            <a href="https://fatihpatir.github.io/web" target="_blank" id="author-link">Fatih PATIR</a>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-container" class="hidden">
+        <div class="modal-content">
+            <button id="close-modal"><i class="ph ph-x"></i></button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
