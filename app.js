@@ -121,6 +121,19 @@ const modalBody = document.getElementById('modal-body');
 const closeModal = document.getElementById('close-modal');
 
 // Initialize
+// PWA Installation
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBtn = document.getElementById('install-btn');
+    if (installBtn) installBtn.classList.remove('hidden');
+});
+
+// For iOS detection
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
 function init() {
     if (!mainContent) return;
     updateDateDisplay();
@@ -128,7 +141,17 @@ function init() {
     setupEventListeners();
     registerServiceWorker();
 
+    // Show install button for iOS if not already standalone
+    const installBtn = document.getElementById('install-btn');
+    if (isIOS && !isStandalone && installBtn) {
+        installBtn.classList.remove('hidden');
+    }
+
     // Header Actions
+    if (installBtn) {
+        installBtn.addEventListener('click', handleInstall);
+    }
+
     document.getElementById('theme-toggle-btn').addEventListener('click', () => {
         document.getElementById('theme-menu').classList.toggle('hidden');
     });
@@ -142,6 +165,44 @@ function init() {
     modalContainer.addEventListener('click', (e) => {
         if (e.target === modalContainer) modalContainer.classList.add('hidden');
     });
+}
+
+function handleInstall() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                document.getElementById('install-btn').classList.add('hidden');
+            }
+            deferredPrompt = null;
+        });
+    } else if (isIOS) {
+        showIOSInstallGuide();
+    }
+}
+
+function showIOSInstallGuide() {
+    modalBody.innerHTML = `
+        <div class="ios-install-guide">
+            <div class="guide-icon">
+                <i class="ph ph-device-mobile-speaker"></i>
+            </div>
+            <h2>Ana Ekrana Ekle</h2>
+            <p>Bu uygulamayı telefonuna yüklemek için:</p>
+            <div class="steps">
+                <div class="step">
+                    <span class="num">1</span>
+                    <p>Tarayıcı altındaki <strong>Paylaş <i class="ph ph-export"></i></strong> butonuna dokun.</p>
+                </div>
+                <div class="step">
+                    <span class="num">2</span>
+                    <p>Açılan menüde aşağı kaydırıp <strong>Ana Ekrana Ekle <i class="ph ph-plus-square"></i></strong> seçeneğini seç.</p>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="document.getElementById('modal-container').classList.add('hidden')" style="margin-top:20px">Anladım</button>
+        </div>
+    `;
+    modalContainer.classList.remove('hidden');
 }
 
 function showInfo() {
@@ -160,6 +221,12 @@ function showInfo() {
             </ul>
         </div>
         <p style="font-weight:600; color:var(--primary-dark); margin-top:15px">Sağlıklı günler dileriz!</p>
+        
+        <div class="developer-credit-modal">
+            <a href="https://fatihpatir.github.io/web" target="_blank">
+                <i class="ph ph-code"></i> Fatih PATIR tarafından geliştirildi
+            </a>
+        </div>
     `;
     modalContainer.classList.remove('hidden');
 }
@@ -213,9 +280,20 @@ window.addWater = (amount) => {
 };
 
 window.copySummary = () => {
-    // Explicitly find the log with the latest date
-    const latestLog = state.logs.length > 0 ? state.logs[0] : { weight: '--', date: '--', note: 'Kayıt yok' };
-    const text = `📊 Diyet Özeti (${latestLog.date})\n💧 Su: ${(state.water.count / 1000).toFixed(2)}L\n⚖️ Kilo: ${latestLog.weight}kg\n📝 Not: ${latestLog.note}\n\n#DiyetAsistanım #SağlıklıYaşam`;
+    if (state.logs.length === 0) {
+        alert("Henüz kilo kaydı bulunmuyor.");
+        return;
+    }
+
+    // Improved robust sorting
+    const sortedLogs = [...state.logs].sort((a, b) => {
+        const d1 = new Date(a.raw || '1970-01-01').getTime();
+        const d2 = new Date(b.raw || '1970-01-01').getTime();
+        return d1 - d2;
+    });
+    const latestLog = sortedLogs[sortedLogs.length - 1];
+    
+    const text = `📊 Diyet Özeti (${latestLog.date})\n💧 Su: ${(state.water.count / 1000).toFixed(2)}L\n⚖️ Kilo: ${latestLog.weight}kg${latestLog.note ? `\n📝 Not: ${latestLog.note}` : ''}\n\n#DiyetAsistanım #SağlıklıYaşam`;
     
     modalBody.innerHTML = `
         <div class="share-preview-box">
@@ -309,15 +387,15 @@ function renderDashboard() {
             </div>
             <div class="today-diet-list">
                 <div class="today-item">
-                    <div class="dot" style="background:#b8d8be"></div>
+                    <div class="item-icon-circle" style="background: #eef7ee; color: #88af8f;"><i class="ph ph-sun"></i></div>
                     <div class="text"><strong>Kahvaltı:</strong> ${todayDiet.breakfast}</div>
                 </div>
                 <div class="today-item">
-                    <div class="dot" style="background:#fad2b1"></div>
+                    <div class="item-icon-circle" style="background: #fff4e5; color: #f7d8ba;"><i class="ph ph-cookie"></i></div>
                     <div class="text"><strong>Ara Öğün:</strong> ${todayDiet.snack}</div>
                 </div>
                 <div class="today-item">
-                    <div class="dot" style="background:#f4b0b0"></div>
+                    <div class="item-icon-circle" style="background: #fbeeee; color: #e59898;"><i class="ph ph-moon"></i></div>
                     <div class="text"><strong>Akşam:</strong> ${todayDiet.dinner}</div>
                 </div>
             </div>
@@ -359,9 +437,18 @@ function renderDietList() {
                     <i class="ph ph-caret-down"></i>
                 </div>
                 <div class="diet-details">
-                    <p><strong>Kahvaltı:</strong> ${item.breakfast}</p>
-                    <p><strong>Ara Öğün:</strong> ${item.snack}</p>
-                    <p><strong>Akşam:</strong> ${item.dinner}</p>
+                    <div class="meal-detail-row">
+                        <i class="ph ph-sun" style="color:#88af8f"></i>
+                        <p><strong>Kahvaltı:</strong> ${item.breakfast}</p>
+                    </div>
+                    <div class="meal-detail-row">
+                        <i class="ph ph-cookie" style="color:#f7d8ba"></i>
+                        <p><strong>Ara Öğün:</strong> ${item.snack}</p>
+                    </div>
+                    <div class="meal-detail-row">
+                        <i class="ph ph-moon" style="color:#e59898"></i>
+                        <p><strong>Akşam:</strong> ${item.dinner}</p>
+                    </div>
                 </div>
             </div>
         `;
@@ -392,7 +479,7 @@ function renderStats() {
         <div class="card">
             <h2><i class="ph ph-note-pencil"></i> Kilo Kaydı</h2>
             <div class="input-row-complex">
-                <input type="date" id="log-date" class="input-minimal">
+                <input type="date" id="log-date" class="input-minimal" value="${new Date().toISOString().split('T')[0]}">
                 <input type="number" id="daily-weight" step="0.1" placeholder="Kg" class="input-minimal">
                 <button class="btn-primary-small" id="save-log">Kaydet</button>
             </div>
@@ -451,8 +538,10 @@ function renderWeightChart() {
 }
 
 function saveLog() {
-    const weight = document.getElementById('daily-weight').value;
-    const rawDate = document.getElementById('log-date').value;
+    const weightInput = document.getElementById('daily-weight');
+    const dateInput = document.getElementById('log-date');
+    const weight = weightInput.value;
+    const rawDate = dateInput.value;
     
     if (!weight || !rawDate) return alert('Lütfen bilgileri girin.');
 
@@ -464,6 +553,7 @@ function saveLog() {
     const existingIndex = state.logs.findIndex(l => l.date === dateStr);
     if (existingIndex > -1) {
         state.logs[existingIndex].weight = weight;
+        state.logs[existingIndex].raw = rawDate; // Make sure the raw date is also updated!
     } else {
         state.logs.push({ date: dateStr, weight, note: '', raw: rawDate });
     }
@@ -472,7 +562,24 @@ function saveLog() {
     state.logs.sort((a, b) => new Date(b.raw || '2000-01-01') - new Date(a.raw || '2000-01-01'));
 
     storage.set('diyet_logs', state.logs);
-    renderTab('stats');
+    
+    // Surgical update instead of full re-render
+    const logsList = document.getElementById('logs-list');
+    if (logsList) logsList.innerHTML = renderLogs();
+    renderWeightChart();
+    
+    // Clear weight input but keep the date for convenience
+    weightInput.value = '';
+    
+    // Small feedback
+    const saveBtn = document.getElementById('save-log');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = 'Kaydedildi!';
+    saveBtn.style.background = 'var(--primary-dark)';
+    setTimeout(() => {
+        saveBtn.innerText = originalText;
+        saveBtn.style.background = '';
+    }, 1500);
 }
 
 window.editLog = (index) => {
@@ -548,6 +655,12 @@ function renderProfile() {
         </div>
         
         <button class="btn-primary" id="save-profile" style="margin-bottom: 20px;">Değişiklikleri Kaydet</button>
+        
+        <div class="developer-credit-profile">
+            <a href="https://fatihpatir.github.io/web" target="_blank">
+                Fatih PATIR tarafından geliştirildi
+            </a>
+        </div>
     `;
     mainContent.innerHTML = profileHTML;
 
