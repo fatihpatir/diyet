@@ -37,6 +37,11 @@ body.theme-lavender {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent iOS auto-zoom on input focus */
+input, select, textarea {
+    font-size: 16px !important;
+}
+
 body {
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg-color);
@@ -985,6 +990,69 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .developer-credit-profile a:hover {
     opacity: 1;
     color: var(--primary-dark);
+}
+
+/* Weight Summary Bar (below chart) */
+.weight-summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--bg-color);
+    border-radius: 14px;
+    border: 1px solid rgba(136, 175, 143, 0.2);
+}
+
+.weight-summary-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.weight-summary-label i {
+    font-size: 16px;
+    color: var(--primary-dark);
+}
+
+.weight-summary-value {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.weight-summary-value.loss {
+    color: #4a9e6b;
+}
+
+.weight-summary-value.gain {
+    color: #e57373;
+}
+
+/* Log weight row with diff */
+.log-weight-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.log-diff {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.log-diff.diff-loss {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.log-diff.diff-gain {
+    background: #ffebee;
+    color: #c62828;
 }
 
 @media (max-width: 500px) {

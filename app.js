@@ -468,12 +468,30 @@ function renderDietList() {
 let weightChart = null;
 
 function renderStats() {
+    // Calculate total weight lost for summary
+    const sortedForSummary = [...state.logs].sort((a, b) => new Date(a.raw || '2000-01-01') - new Date(b.raw || '2000-01-01'));
+    let weightSummaryHTML = '';
+    if (sortedForSummary.length >= 2) {
+        const first = parseFloat(sortedForSummary[0].weight);
+        const last = parseFloat(sortedForSummary[sortedForSummary.length - 1].weight);
+        const diff = (last - first).toFixed(1);
+        const isLoss = parseFloat(diff) < 0;
+        const icon = isLoss ? 'ph-trend-down' : 'ph-trend-up';
+        weightSummaryHTML = `
+            <div class="weight-summary-bar">
+                <span class="weight-summary-label"><i class="ph ${icon}"></i> Toplam Verilen Kilo</span>
+                <span class="weight-summary-value ${isLoss ? 'loss' : 'gain'}">${isLoss ? '' : '+'}${diff} kg</span>
+            </div>
+        `;
+    }
+
     const statsHTML = `
         <div class="card">
             <h2><i class="ph ph-chart-line-up"></i> Gelişim Grafiği</h2>
             <div class="chart-container" style="position: relative; height:200px; width:100%">
                 <canvas id="weightChartCanvas"></canvas>
             </div>
+            ${weightSummaryHTML}
         </div>
 
         <div class="card">
@@ -499,39 +517,74 @@ function renderWeightChart() {
     const ctx = document.getElementById('weightChartCanvas');
     if (!ctx) return;
 
-    // Sort logs by date (newest first for your specific R-to-L request)
-    const sortedLogs = [...state.logs].sort((a, b) => new Date(b.raw || '2000-01-01') - new Date(a.raw || '2000-01-01'));
-    
+    // Sort logs ascending: oldest on the LEFT, newest on the RIGHT
+    const sortedLogs = [...state.logs].sort((a, b) => new Date(a.raw || '2000-01-01') - new Date(b.raw || '2000-01-01'));
+
     const labels = sortedLogs.map(l => l.date);
-    const data = sortedLogs.map(l => l.weight);
+    const data = sortedLogs.map(l => parseFloat(l.weight));
 
     if (weightChart) weightChart.destroy();
+
+    // Gradient fill
+    const canvasCtx = ctx.getContext('2d');
+    const gradient = canvasCtx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(136, 175, 143, 0.45)');
+    gradient.addColorStop(1, 'rgba(136, 175, 143, 0.0)');
+
+    // Narrow Y-axis to make changes more visible
+    const weights = data.filter(d => !isNaN(d));
+    const minW = weights.length > 0 ? Math.min(...weights) - 1.5 : 0;
+    const maxW = weights.length > 0 ? Math.max(...weights) + 1.5 : 100;
 
     weightChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Kilo Progress',
+                label: 'Kilo',
                 data: data,
                 borderColor: '#88af8f',
-                backgroundColor: 'rgba(136, 175, 143, 0.1)',
-                borderWidth: 3,
+                backgroundColor: gradient,
+                borderWidth: 2.5,
                 tension: 0.4,
                 fill: true,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#88af8f',
-                pointBorderWidth: 2,
-                pointRadius: 4
+                pointBackgroundColor: '#88af8f',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2.5,
+                pointRadius: 5,
+                pointHoverRadius: 7
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(255,255,255,0.96)',
+                    titleColor: '#888',
+                    bodyColor: '#4a7c59',
+                    borderColor: '#88af8f',
+                    borderWidth: 1.5,
+                    padding: 10,
+                    cornerRadius: 10,
+                    callbacks: {
+                        label: (item) => ` ${item.parsed.y} kg`
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: false, grid: { display: false } },
-                x: { grid: { display: false } }
+                y: {
+                    min: minW,
+                    max: maxW,
+                    beginAtZero: false,
+                    grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                    ticks: { font: { size: 11 }, color: '#aaa' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 }, color: '#aaa' }
+                }
             }
         }
     });
@@ -601,19 +654,40 @@ window.deleteLog = (index) => {
 
 function renderLogs() {
     if (state.logs.length === 0) return '<p style="text-align:center; color:var(--text-light); padding:20px;">Henüz kayıt yok.</p>';
-    
-    return state.logs.map((log, index) => `
-        <div class="log-item-card">
-            <div class="log-info">
-                <strong>${log.date}</strong>
-                <span>${log.weight} kg</span>
+
+    // Sort chronologically (oldest first) to compute day-over-day diff
+    const sorted = [...state.logs].sort((a, b) => new Date(a.raw || '2000-01-01') - new Date(b.raw || '2000-01-01'));
+
+    return sorted.map((log, index) => {
+        // Diff vs previous entry
+        let diffHTML = '';
+        if (index > 0) {
+            const prev = parseFloat(sorted[index - 1].weight);
+            const curr = parseFloat(log.weight);
+            const diff = (curr - prev).toFixed(1);
+            const isLoss = parseFloat(diff) < 0;
+            diffHTML = `<span class="log-diff ${isLoss ? 'diff-loss' : 'diff-gain'}">${isLoss ? '' : '+'}${diff} kg</span>`;
+        }
+
+        // Map back to state.logs index for edit/delete
+        const stateIndex = state.logs.findIndex(l => l.raw === log.raw && l.date === log.date);
+
+        return `
+            <div class="log-item-card">
+                <div class="log-info">
+                    <strong>${log.date}</strong>
+                    <div class="log-weight-row">
+                        <span>${log.weight} kg</span>
+                        ${diffHTML}
+                    </div>
+                </div>
+                <div class="log-actions">
+                    <button onclick="window.editLog(${stateIndex})"><i class="ph ph-pencil-simple"></i></button>
+                    <button onclick="window.deleteLog(${stateIndex})" style="color:#e57373"><i class="ph ph-trash"></i></button>
+                </div>
             </div>
-            <div class="log-actions">
-                <button onclick="window.editLog(${index})"><i class="ph ph-pencil-simple"></i></button>
-                <button onclick="window.deleteLog(${index})" style="color:#e57373"><i class="ph ph-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // --- Profile ---
